@@ -1,19 +1,33 @@
-include Makefile.env
+include Makefile*.env
+
+# set some defaults in case Makefile*.env didn't set them
+ifndef GOOGLE_PROJECT_NUMBER
+GOOGLE_PROJECT_NUMBER := $(shell gcloud projects describe $(CLOUDSDK_CORE_PROJECT) --format 'value(projectNumber)')
+endif
+ifndef API_SECRET_PATH
+API_SECRET_PATH := projects/$(GOOGLE_PROJECT_NUMBER)/secrets/gcp-slack-notifier-SLACK_API_TOKEN
+endif
+ifndef CLOUD_FUNCTION
+CLOUD_FUNCTION := slack-budget-notification
+endif
+ifndef PUBSUB_TOPIC
+PUBSUB_TOPIC := billing-alerts
+endif
+ifndef SLACK_CHANNEL
+SLACK_CHANNEL := "\#google-cloud"
+endif
+ifndef
+LOGS := 15
+endif
 
 ROOT_PATH=$(PWD)
 SRC_PATH=$(ROOT_PATH)
 BUILD_PATH=$(ROOT_PATH)/build
 BUILD_DOCS_PATH=build/docs
 TESTS_PATH=$(ROOT_PATH)/tests
-
-VENV_PATH=pipenv
-VENV_ACTIVATE_PATH=$(VENV_PATH)/bin/activate
 SRC_REQUIREMENTS=$(SRC_PATH)/requirements.txt
-CICD_REQUIREMENTS=cicd.txt
-
 FIND_ALL_SRC=find $(SRC_PATH) -name "*.py"
 COVERAGE_MIN ?= 75
-
 PYLINT=pipenv run pylint
 PYLINT_OPTIONS=
 REPORT_PYLINT=$(BUILD_DOCS_PATH)/pylint.log
@@ -24,6 +38,7 @@ help:
 	@echo "==========================="
 	@echo ""
 	@echo "initial setup:"
+	@echo "    show: show relevant config info (handy before doing anything else)"
 	@echo "    permissions-info: describe permissions needed to run the function"
 	@echo "    install: do initial setup and deploy the function to GCP"
 	@echo "    - slack-secret: use during initial setup to provision a GCP Secret Manager secret"
@@ -50,12 +65,22 @@ help:
 	@echo "    format: reformat Python code with Black (https://github.com/psf/black)"
 	@echo "    local: run the Python function locally"
 
+show: printenv gcloud-info
+
+printenv:
+	@printf "\n## Relevant environmental variables\n\n"
+	@env |egrep '(CLOUDSDK|GOOGLE|SLACK)' |sort
+
+gcloud-info:
+	@printf "\n## Google Cloud SDK config\n\n"
+	@gcloud config list
+
 #
 # Google Cloud SDK targets
 #
 
 gcloud-auth:
-	gcloud auth activate-service-account "$$CLOUDSDK_SERVICE_ACCOUNT" --key-file "$$GOOGLE_APPLICATION_CREDENTIALS"
+	gcloud auth activate-service-account "$(CLOUDSDK_SERVICE_ACCOUNT)" --key-file "$(GOOGLE_APPLICATION_CREDENTIALS)"
 
 service-key: $(GOOGLE_APPLICATION_CREDENTIALS)
 
@@ -63,17 +88,18 @@ install: slack-secret service-account service-key deploy
 	@echo "Cloud Function $(CLOUD_FUNCTION) and dependencies installed"
 
 $(GOOGLE_APPLICATION_CREDENTIALS):
-	@gsutil ls gs://$(PROJECT_BUCKET) >/dev/null; \
-	if (( $$? == 0 )); then \
-	    printf "\n## Downloading service key $(GOOGLE_APPLICATION_CREDENTIALS) from Cloud Storage @ $(PROJECT_BUCKET)\n\n"; \
-	    gsutil cp gs://$(PROJECT_BUCKET)/$$(basename $(GOOGLE_APPLICATION_CREDENTIALS)) $(GOOGLE_APPLICATION_CREDENTIALS); \
-	else \
-	    printf "\n## Generating new service key for $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"; \
-	    tmpfile=$$(mktemp); \
-	    gcloud iam service-accounts keys create $$tmpfile --iam-account $(CLOUDSDK_SERVICE_ACCOUNT); \
-	    mv -v $$tmpfile $(GOOGLE_APPLICATION_CREDENTIALS); \
-	    gsutil cp $(GOOGLE_APPLICATION_CREDENTIALS) gs://$(PROJECT_BUCKET)/$$(basename $(GOOGLE_APPLICATION_CREDENTIALS)); \
-	fi
+	printf "\n## Generating new service key for $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"; \
+	tmpfile=$$(mktemp); \
+	gcloud iam service-accounts keys create $$tmpfile --iam-account $(CLOUDSDK_SERVICE_ACCOUNT); \
+	mv -v $$tmpfile $(GOOGLE_APPLICATION_CREDENTIALS); \
+
+gcloud-apis: gcloud-auth
+	@printf "\n## Enabling Google Cloud APIs for Cloud Billing budget notifications\n\n"
+	@gcloud config list
+	@gcloud services enable billingbudgets.googleapis.com
+	@gcloud services enable cloudfunctions.googleapis.com
+	@gcloud services enable secretmanager.googleapis.com
+	@gcloud services list
 
 # IAM permissions for Secret Manager:
 # https://cloud.google.com/secret-manager/docs/access-control
@@ -100,10 +126,11 @@ permissions-info:
 	@echo "Also consider installing functions-framework-python:"
 	@echo "    https://github.com/GoogleCloudPlatform/functions-framework-python"
 
-service-account: .FORCE
+service-account:
 	@printf "\n## Creating GCP service account $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"
-	@gcloud iam service-accounts describe $(CLOUDSDK_SERVICE_ACCOUNT) \
-	 || gcloud iam service-accounts create $(CLOUDSDK_SERVICE_ACCOUNT)
+	@acct_shortname=$$(echo "$(CLOUDSDK_SERVICE_ACCOUNT)" |cut -d@ -f1); \
+	 gcloud iam service-accounts describe $(CLOUDSDK_SERVICE_ACCOUNT) \
+	 || (echo creating $$acct_shortname; gcloud iam service-accounts create $$acct_shortname)
 	@printf "\n## Binding GCP service account $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"
 	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
 	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/secretmanager.admin
