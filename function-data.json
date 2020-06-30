@@ -1,0 +1,8 @@
+{
+  "attributes": {
+    "billingAccountId": "TEST-ACCOUNT",
+    "budgetId": "TEST-BUDGET",
+    "schemaVersion": "1.0"
+  },
+  "data": "CnsKICJidWRnZXREaXNwbGF5TmFtZSI6ICJBbGwgUHJvamVjdHMiLAogImFsZXJ0VGhyZXNob2xkRXhjZWVkZWQiOiAwLjUsCiAiY29zdEFtb3VudCI6IDUxLjQsCiAiY29zdEludGVydmFsU3RhcnQiOiAiMjAyMC0wNi0wMVQwNzowMDowMFoiLAogImJ1ZGdldEFtb3VudCI6IDEwMC4wLAogImJ1ZGdldEFtb3VudFR5cGUiOiAiU1BFQ0lGSUVEX0FNT1VOVCIsCiAiY3VycmVuY3lDb2RlIjogIlVTRCIKfQo="
+}

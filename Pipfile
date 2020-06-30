@@ -1,0 +1,24 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+#black >= 19.3b0, < 19.10*
+coverage = "*"
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-mock = "*"
+pytest-env = "*"
+moto = "*"
+safety = "*"
+
+[packages]
+slackclient = ">=2.7.1"
+google-cloud-secret-manager = "*"
+functions-framework = "*"
+parse = "*"
+
+[requires]
+python_version = "3.7"
