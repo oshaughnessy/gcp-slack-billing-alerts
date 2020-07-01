@@ -101,12 +101,13 @@ $(GOOGLE_APPLICATION_CREDENTIALS):
 	env GOOGLE_APPLICATION_CREDENTIALS= gcloud iam service-accounts keys create $$tmpfile --iam-account $(CLOUDSDK_SERVICE_ACCOUNT); \
 	mv -v $$tmpfile $(GOOGLE_APPLICATION_CREDENTIALS)
 
-gcloud-apis: gcloud-auth
+gcloud-apis:
 	@printf "\n## Enabling Google Cloud APIs for Cloud Billing budget notifications\n\n"
 	@gcloud config list
-	@gcloud services enable billingbudgets.googleapis.com
-	@gcloud services enable cloudfunctions.googleapis.com
-	@gcloud services enable secretmanager.googleapis.com
+	@gcloud services enable billingbudgets.googleapis.com \
+	                        cloudfunctions.googleapis.com \
+	                        cloudresourcemanager.googleapis.com \
+	                        secretmanager.googleapis.com
 	@gcloud services list
 
 # IAM permissions for Secret Manager:
