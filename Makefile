@@ -144,18 +144,19 @@ service-account:
 
 service-account-roles:
 	@printf "\n## Binding GCP service account $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"
+	@printf "\n### Granting secretmanager.admin\n\n"
 	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
 	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/secretmanager.admin
+	@printf "\n### Granting cloudfunctions.admin\n\n"
 	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
-	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/cloudfunctions.developer
-	@gcloud projects get-iam-policy $(CLOUDSDK_CORE_PROJECT) \
-	 --flatten=bindings --filter 'bindings.role=roles/secretmanager.admin'
+	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/cloudfunctions.admin
 
 slack-secret:
 	@echo "creating a Cloud Secret for your Slack API token at $(API_SECRET_PATH)"
 	gcloud secrets create $(API_SECRET_PATH) --replication-policy=automatic || true
 	gcloud secrets versions add $(API_SECRET_PATH) --data-file=-
 
+# see: https://cloud.google.com/functions/docs/deploying/filesystem
 deploy:
 	gcloud functions deploy $(CLOUD_FUNCTION) --trigger-topic=$(PUBSUB_TOPIC) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL) --runtime=$(PYTHON_RUNTIME_VER)
 	@echo "Cloud Function $(CLOUD_FUNCTION) deployed"
