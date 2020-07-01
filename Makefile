@@ -162,7 +162,7 @@ slack-secret:
 
 # see: https://cloud.google.com/functions/docs/deploying/filesystem
 deploy:
-	gcloud functions deploy $(CLOUD_FUNCTION) --trigger-topic=$(PUBSUB_TOPIC) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL) --runtime=$(PYTHON_RUNTIME_VER)
+	gcloud functions deploy $(CLOUD_FUNCTION) --trigger-topic=$(PUBSUB_TOPIC) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL) --runtime=$(PYTHON_RUNTIME_VER) --entry-point=notify_slack
 	@echo "Cloud Function $(CLOUD_FUNCTION) deployed"
 
 #
