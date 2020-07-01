@@ -19,6 +19,7 @@ endif
 ifndef
 LOGS := 15
 endif
+PYTHON_RUNTIME_VER=python37
 
 export PIP_REQUIRE_VIRTUALENV=false
 export PIPENV_VENV_IN_PROJECT=true
@@ -156,7 +157,7 @@ slack-secret:
 	gcloud secrets versions add $(API_SECRET_PATH) --data-file=-
 
 deploy:
-	gcloud functions deploy $(CLOUD_FUNCTION) --trigger-topic=$(PUBSUB_TOPIC) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL)
+	gcloud functions deploy $(CLOUD_FUNCTION) --trigger-topic=$(PUBSUB_TOPIC) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL) --runtime=$(PYTHON_RUNTIME_VER)
 	@echo "Cloud Function $(CLOUD_FUNCTION) deployed"
 
 #
