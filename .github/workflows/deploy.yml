@@ -74,3 +74,4 @@ jobs:
       - id: deploy-function
         name: Deploy the budget alerts code as a Google Cloud Function
         run: make deploy
+
