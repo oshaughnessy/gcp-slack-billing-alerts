@@ -45,12 +45,18 @@ but you shouldn't make it public, either.
     cp Makefile.env.sample Makefile.dev.env
     vim Makefile.dev.env
 
-### Fourth: Service Account
+### Fourth: APIs
 
-Create a service account in GCP:
+Enable the APIs you'll need in your Google Cloud project:
 
     gcloud auth login
-    make service-account
+    make gcloud-apis
+
+### Fourth: Service Account
+
+Create a service account in GCP. Assuming you've already logged in as shown above:
+
+    make service-account service-account-roles
 
 ### Fifth: Service Key
 
