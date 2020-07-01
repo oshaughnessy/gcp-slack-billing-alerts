@@ -21,7 +21,7 @@ jobs:
 
       - id: env
         name: Environment prep
-        run: make printenv
+        run: make gcloud-auth printenv
         env:
             PIPENV_DEV: "true"
 
