@@ -158,6 +158,10 @@ class MySecret:
         return version
 
 
+# pylint: disable=too-many-locals
+# that could probably be broken up, but there's a fair amount of state and
+# message buildup happening in this function that doesn't seem sensible to
+# split apart.
 def notify_slack(payload, context):
     """Entry point for Cloud Function that receives event data from a Cloud Billing alert.
 

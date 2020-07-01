@@ -20,13 +20,18 @@ ifndef
 LOGS := 15
 endif
 
+export PIP_REQUIRE_VIRTUALENV=false
+export PIPENV_VENV_IN_PROJECT=true
+export PIPENV_IGNORE_VIRTUALENVS=true
+export PATH:=$(shell python3 -m site --user-base)/bin:$(PATH)
+
 ROOT_PATH=$(PWD)
 SRC_PATH=$(ROOT_PATH)
 BUILD_PATH=$(ROOT_PATH)/build
 BUILD_DOCS_PATH=build/docs
 TESTS_PATH=$(ROOT_PATH)/tests
-SRC_REQUIREMENTS=$(SRC_PATH)/requirements.txt
-FIND_ALL_SRC=find $(SRC_PATH) -name "*.py"
+#PYTHON_SRC=$(wildcard *.py)
+PYTHON_SRC=main.py
 COVERAGE_MIN ?= 75
 PYLINT=pipenv run pylint
 PYLINT_OPTIONS=
@@ -44,8 +49,10 @@ help:
 	@echo "    - slack-secret: use during initial setup to provision a GCP Secret Manager secret"
 	@echo "      with your Slack API token (paste it in when prompted)"
 	@echo "    - service-account: create a service account for provisioning"
+	@echo "    - service-account-roles: grant required roles to the service account"
 	@echo "    - service-key: create a service key from the service account"
 	@echo "    - deploy: launch or update the container deployed to Google Cloud Functions"
+	@echo "    python-reqs: install pipenv, install python requirements"
 	@echo ""
 	@echo "google cloud targets:"
 	@echo "    gcloud-apis: ensure all GCP APIs necessary for deployment are enabled"
@@ -64,12 +71,13 @@ help:
 	@echo "    - test-unit: run unit tests on the Python code"
 	@echo "    format: reformat Python code with Black (https://github.com/psf/black)"
 	@echo "    local: run the Python function locally"
+	@echo "    update-dependencies: rebuild Pipfile.lock and requirements.txt after updating Pipfile"
 
 show: printenv gcloud-info
 
 printenv:
 	@printf "\n## Relevant environmental variables\n\n"
-	@env |egrep '(CLOUDSDK|GOOGLE|SLACK)' |sort
+	@env |egrep '^(CLOUDSDK|GOOGLE|PATH|PIP|SLACK)' |sort
 
 gcloud-info:
 	@printf "\n## Google Cloud SDK config\n\n"
@@ -84,14 +92,14 @@ gcloud-auth:
 
 service-key: $(GOOGLE_APPLICATION_CREDENTIALS)
 
-install: slack-secret service-account service-key deploy
+install: slack-secret service-account service-account-roles service-key deploy
 	@echo "Cloud Function $(CLOUD_FUNCTION) and dependencies installed"
 
 $(GOOGLE_APPLICATION_CREDENTIALS):
 	printf "\n## Generating new service key for $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"; \
 	tmpfile=$$(mktemp); \
-	gcloud iam service-accounts keys create $$tmpfile --iam-account $(CLOUDSDK_SERVICE_ACCOUNT); \
-	mv -v $$tmpfile $(GOOGLE_APPLICATION_CREDENTIALS); \
+	env GOOGLE_APPLICATION_CREDENTIALS= gcloud iam service-accounts keys create $$tmpfile --iam-account $(CLOUDSDK_SERVICE_ACCOUNT); \
+	mv -v $$tmpfile $(GOOGLE_APPLICATION_CREDENTIALS)
 
 gcloud-apis: gcloud-auth
 	@printf "\n## Enabling Google Cloud APIs for Cloud Billing budget notifications\n\n"
@@ -131,9 +139,13 @@ service-account:
 	@acct_shortname=$$(echo "$(CLOUDSDK_SERVICE_ACCOUNT)" |cut -d@ -f1); \
 	 gcloud iam service-accounts describe $(CLOUDSDK_SERVICE_ACCOUNT) \
 	 || (echo creating $$acct_shortname; gcloud iam service-accounts create $$acct_shortname)
+
+service-account-roles:
 	@printf "\n## Binding GCP service account $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"
 	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
 	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/secretmanager.admin
+	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
+	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/cloudfunctions.developer
 	@gcloud projects get-iam-policy $(CLOUDSDK_CORE_PROJECT) \
 	 --flatten=bindings --filter 'bindings.role=roles/secretmanager.admin'
 
@@ -149,6 +161,15 @@ deploy:
 #
 # Dev & debugging targets
 #
+
+python-reqs:
+	@printf "\n## Installing Python project requirements\n\n"
+	if [ "$$CI" ]; then \
+	    sudo -H pip3 install pipenv; \
+	else \
+	    pip3 install --user pipenv; \
+	fi
+	@pipenv install
 
 local:
 	pipenv run functions-framework --target=notify_slack --debug
@@ -167,44 +188,50 @@ function-test:
 
 test-unit:
 	@if [ -d $(TESTS_PATH)/unit ]; then \
-		export PYTHONPATH=$(SRC_PATH); \
-		pytest \
-		--cov=$(SRC_PATH) \
-		--cov-report term-missing \
-		--cov-fail-under=$(COVERAGE_MIN) $(TESTS_PATH) \
-		|| (echo "Unit tests failed!"; exit 1) \
+	     export PYTHONPATH=$(SRC_PATH); \
+	     pytest \
+	     --cov=$(SRC_PATH) \
+	     --cov-report term-missing \
+	     --cov-fail-under=$(COVERAGE_MIN) $(TESTS_PATH) \
+	     || (echo "Unit tests failed!"; exit 1) \
 	fi
 
 code-test: pylint test-unit safety
 
 format:
 	@if [ -d $(SRC_PATH) ]; then \
-		echo "Analyzing code formatting ..."; \
-		pipenv run black -v $(SRC_PATH) \
-		|| (echo "Code formatting failed!"; exit 1) \
+	     echo "Analyzing code formatting ..."; \
+	     pipenv run black -v $(SRC_PATH) \
+	     || (echo "Code formatting failed!"; exit 1) \
 	fi
 
 pylint:
 	@if [ -d $(SRC_PATH) ]; then \
-		echo "Analyzing code linting ..."; \
-		mkdir -p $(BUILD_DOCS_PATH); \
-		export PYTHONPATH=$(SRC_PATH); \
-		test -e $(PWD)/.pylintrc || $(PYLINT) --generate-rcfile > $(PWD)/.pylintrc; \
-		$(FIND_ALL_SRC) | xargs $(PYLINT) $(PYLINT_OPTIONS) > $(REPORT_PYLINT) || (cat $(REPORT_PYLINT); exit 1); \
+	    echo "Analyzing code linting ..."; \
+	    mkdir -p $(BUILD_DOCS_PATH); \
+	    export PYTHONPATH=$(SRC_PATH); \
+	    test -e $(PWD)/.pylintrc || $(PYLINT) --generate-rcfile > $(PWD)/.pylintrc; \
+	    $(PYLINT) $(PYLINT_OPTIONS) $(PYTHON_SRC) > $(REPORT_PYLINT) || (cat $(REPORT_PYLINT); exit 1); \
 	fi
 
-safety: $(SRC_REQUIREMENTS)
+safety: requirements.txt
 	@if [ -d $(SRC_PATH) ]; then \
-		echo "Checking requirements for security vulnerabilities..."; \
-		pipenv run python -m safety check -r $(SRC_REQUIREMENTS) --full-report \
-		|| (echo "Security check failed!"; exit 1) \
+	    echo "Checking requirements for security vulnerabilities..."; \
+	    pipenv run python -m safety check -r requirements.txt --full-report \
+	    || (echo "Security check failed!"; exit 1) \
 	fi
 
-$(SRC_REQUIREMENTS): Pipfile.lock
-	echo "Updating requirements.txt from Pipfile"
-	@pipenv lock -r >$(SRC_REQUIREMENTS)
+requirements.txt: Pipfile.lock
+	@echo "Updating requirements.txt from Pipfile"
+	@pipenv lock -r >requirements.txt
+
+update-dependencies: Pipfile requirements.txt
+	@echo "Updating Pipfile.lock"
+	@pipenv update
 
 clean:
-	find . -iname "*.pyc" -delete
+	find . -iname '*.pyc' -delete
 	rm -rf $(BUILD_PATH)
 	rm -f .coverage
+	rm -rf .venv
+

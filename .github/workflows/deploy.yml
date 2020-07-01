@@ -1,35 +1,41 @@
 # see https://github.com/stelligent/xaap/actions after each git-push
 name: Deploy
 
-on:
-  push:
-    paths:
-      - 'deploy/**'
+on: [push]
 
 env:
   CLOUDSDK_CORE_DISABLE_PROMPTS: 1
-  CLOUDSDK_CORE_PROJECT: {{ secrets.CLOUDSDK_CORE_PROJECT }}
-  CLOUDSDK_COMPUTE_REGION: {{ secrets.CLOUDSDK_COMPUTE_REGION }}
-  CLOUDSDK_COMPUTE_ZONE: {{ secrets.CLOUDSDK_COMPUTE_ZONE }}
-  CLOUDSDK_RUN_REGION: {{ secrets.CLOUDSDK_COMPUTE_REGION }}
-  CLOUDSDK_SERVICE_ACCOUNT: {{ secrets.CLOUDSDK_SERVICE_ACCOUNT }}
+  CLOUDSDK_CORE_PROJECT: ${{ secrets.CLOUDSDK_CORE_PROJECT }}
+  CLOUDSDK_COMPUTE_REGION: ${{ secrets.CLOUDSDK_COMPUTE_REGION }}
+  CLOUDSDK_COMPUTE_ZONE: ${{ secrets.CLOUDSDK_COMPUTE_ZONE }}
+  CLOUDSDK_RUN_REGION: ${{ secrets.CLOUDSDK_COMPUTE_REGION }}
+  CLOUDSDK_SERVICE_ACCOUNT: ${{ secrets.CLOUDSDK_SERVICE_ACCOUNT }}
   GOOGLE_APPLICATION_CREDENTIALS: gcp-slack-notifier.key
 
 jobs:
   check:
-    name: Verify code before running
+    name: Verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+
       - id: env
         name: Environment prep
-        run: "id && env |sort && env |egrep '^(CLOUDSDK|GOOGLE)' >deploy/docker.env && sed 's,^,docker.env: ,' deploy/docker.env"
+        run: make printenv
+        env:
+            PIPENV_DEV: "true"
+
+      - id: test
+        name: Test our code before deploying
+        run: make python-reqs code-test
+        env:
+            PIPENV_DEV: "true"
 
   deploy:
     name: Deploy Google Cloud Function
     #runs-on: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     runs-on: ubuntu-latest
-    #needs: lint
+    needs: check
     steps:
       - uses: actions/checkout@master
 
@@ -49,9 +55,17 @@ jobs:
         name: Configure job PATH to use Google Cloud SDK
         run: export PATH=$PATH:${{ env.HOME }}/google-cloud-sdk/bin
 
-      - id: enable-gcp-apis
-        name: Enable APIs necessary for deployment
-        run: make gcloud-apis
+      #- id: enable-gcp-apis
+      #  name: Enable APIs necessary for deployment
+      #  run: make gcloud-apis
+
+      - id: python-dependencies
+        name: Install python dependencies
+        run: make python-reqs
+
+      - id: gcloud-auth
+        name: Authenticate to Google Cloud Platform
+        run: make gcloud-auth
 
       - id: deploy-function
         name: Deploy the budget alerts code as a Google Cloud Function
