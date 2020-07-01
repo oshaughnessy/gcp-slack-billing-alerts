@@ -156,7 +156,7 @@ slack-secret:
 	gcloud secrets versions add $(API_SECRET_PATH) --data-file=-
 
 deploy:
-	gcloud functions deploy $(CLOUD_FUNCTION) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL)
+	gcloud functions deploy $(CLOUD_FUNCTION) --trigger-topic=$(PUBSUB_TOPIC) --set-env-vars=SLACK_CHANNEL=$(SLACK_CHANNEL)
 	@echo "Cloud Function $(CLOUD_FUNCTION) deployed"
 
 #
