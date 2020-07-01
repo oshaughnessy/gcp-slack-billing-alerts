@@ -32,7 +32,7 @@ BUILD_PATH=$(ROOT_PATH)/build
 BUILD_DOCS_PATH=build/docs
 TESTS_PATH=$(ROOT_PATH)/tests
 #PYTHON_SRC=$(wildcard *.py)
-PYTHON_SRC=main.py
+PYTHON_SRC=main.py mysecret.py
 COVERAGE_MIN ?= 75
 PYLINT=pipenv run pylint
 PYLINT_OPTIONS=
@@ -244,4 +244,3 @@ clean:
 	rm -rf $(BUILD_PATH)
 	rm -f .coverage
 	rm -rf .venv
-
