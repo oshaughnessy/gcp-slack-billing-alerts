@@ -19,9 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
+      - id: gcloud-prep
+        name: Grab Google Cloud service account key
+        run: echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}' >${{ env.GOOGLE_APPLICATION_CREDENTIALS }} && make gcloud-auth
+
       - id: env
         name: Environment prep
-        run: make gcloud-auth printenv
+        run: make printenv
         env:
             PIPENV_DEV: "true"
 
