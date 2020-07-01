@@ -19,11 +19,11 @@ The `main:notify_slack` function is the Google Cloud Functions entry point.
 Before your budget alerts function can be deployed, a handful of things must be
 created or configured.
 
-### First
+### 1st: Create Project
 
 Ensure you have a project for your code created in Google Cloud Platform.
 
-### Second
+### 2nd: Configure Pipeline
 
 Next, if you want to automatically deploy from GitHub to Google
 Cloud Platform, define [GitHub Secrets](https://help.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets) in your repository for the following variables:
@@ -34,7 +34,7 @@ Cloud Platform, define [GitHub Secrets](https://help.github.com/en/actions/confi
 * CLOUDSDK_SERVICE_ACCOUNT:
 * SLACK_API_TOKEN: Oauth token for a Slack bot. See https://api.slack.com/docs/token-types#bot
 
-### Third
+### 3rd: Dev Environment
 
 Define the same variables in a local copy for your dev environment.
 Make sure that version is included in `.gitignore` (`Makefile.dev.env`
@@ -45,7 +45,7 @@ but you shouldn't make it public, either.
     cp Makefile.env.sample Makefile.dev.env
     vim Makefile.dev.env
 
-### Fourth: APIs
+### 4th: APIs
 
 Enable the APIs you'll need in your Google Cloud project:
 
@@ -57,13 +57,13 @@ the service account to gcloud. `gcloud auth login` will authenticate your own
 user credentials. For some privileged operations, like the ones above and below,
 you need your own higher permissions, presumably something like Project Owner.
 
-### Fourth: Service Account
+### 5th: Service Account
 
 Create a service account in GCP. Assuming you've already logged in as shown above:
 
     make service-account service-account-roles
 
-### Fifth: Service Key
+### 6th: Service Key
 
 Create a service key for the service account you just created.
 

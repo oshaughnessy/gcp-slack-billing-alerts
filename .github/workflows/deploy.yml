@@ -1,7 +1,13 @@
 # see https://github.com/stelligent/xaap/actions after each git-push
 name: Deploy
 
-on: [push]
+on:
+  push:
+    paths:
+      - 'Makefile*'
+      - 'Pip*'
+      - 'requirements.txt'
+      - '*.py'
 
 env:
   CLOUDSDK_CORE_DISABLE_PROMPTS: 1
