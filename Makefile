@@ -142,6 +142,7 @@ service-account:
 	 gcloud iam service-accounts describe $(CLOUDSDK_SERVICE_ACCOUNT) \
 	 || (echo creating $$acct_shortname; gcloud iam service-accounts create $$acct_shortname)
 
+# see: https://cloud.google.com/functions/docs/reference/iam/roles
 service-account-roles:
 	@printf "\n## Binding GCP service account $(CLOUDSDK_SERVICE_ACCOUNT)\n\n"
 	@printf "\n### Granting secretmanager.admin\n\n"
@@ -150,6 +151,9 @@ service-account-roles:
 	@printf "\n### Granting cloudfunctions.admin\n\n"
 	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
 	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/cloudfunctions.admin
+	@printf "\n### Granting iam.serviceAccountUser\n\n"
+	@gcloud projects add-iam-policy-binding $(CLOUDSDK_CORE_PROJECT) \
+	 --member serviceAccount:$(CLOUDSDK_SERVICE_ACCOUNT) --role roles/iam.serviceAccountUser
 
 slack-secret:
 	@echo "creating a Cloud Secret for your Slack API token at $(API_SECRET_PATH)"
