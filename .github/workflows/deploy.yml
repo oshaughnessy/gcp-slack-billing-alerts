@@ -1,4 +1,3 @@
-# see https://github.com/stelligent/xaap/actions after each git-push
 name: Deploy
 
 on:
