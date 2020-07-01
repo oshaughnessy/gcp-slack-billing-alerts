@@ -52,6 +52,11 @@ Enable the APIs you'll need in your Google Cloud project:
     gcloud auth login
     make gcloud-apis
 
+Note that the "gcloud-auth" target in the `Makefile` is used to authenticate
+the service account to gcloud. `gcloud auth login` will authenticate your own
+user credentials. For some privileged operations, like the ones above and below,
+you need your own higher permissions, presumably something like Project Owner.
+
 ### Fourth: Service Account
 
 Create a service account in GCP. Assuming you've already logged in as shown above:
